@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON File Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 0 auto;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: calc(100% - 24px);
+            box-sizing: border-box; 
+        }
+
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
+        button {
+            display: block;
+            margin: 0 auto;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .table-container {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #f0f0f0;
+        }
+
+        tfoot {
+            font-weight: bold;
+        }
+
+        .totals {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .totals h2 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<h2>Valorant Data Viewer</h2>
+
+<div class="container">
+    <p class="request-link">You can <a href="https://support-valorant.riotgames.com/hc/en-us/requests/new?ticket_form_id=1500001094502" target="_blank">request data here</a> from Riot Games. (please note that it takes up to 30 days to receive your data)</p>
+</div>
+
+<div class="container">
+    <h2>Please upload your</h2>
+    <h2>valorant_grouped_reports, valorant_payment_event, valorant_purchase_event</h2>
+    <h2>.json valorant data files</h2>
+    <input type="file" id="fileInput" multiple>
+    <button id="uploadButton">Upload Files</button>
+</div>
+
+<div class="totals">
+    <h2>Wow You Spent <span id="totalRealCurrency"></span>$ on valorant!</h2>
+</div>
+
+<div class="container">
+    <h2>Reports Data</h2>
+    <table id="reportsTable">
+        <thead>
+        <tr>
+            <th>Type</th>
+            <th>Reports Made</th>
+            <th>Reports Received</th>
+        </tr>
+        </thead>
+        <tbody id="reportsBody">
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <h2>Payments Data</h2>
+    <table id="paymentsTable">
+        <thead>
+        <tr>
+            <th>Country Code</th>
+            <th>Currency Code</th>
+            <th>Game Currency Granted</th>
+            <th>Game Currency Type</th>
+            <th>Payment Method</th>
+            <th>Payment Time</th>
+            <th>Player Facing Purchase ID</th>
+            <th>Real Currency Paid</th>
+        </tr>
+        </thead>
+        <tbody id="paymentsBody">
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <h2>Purchases Data</h2>
+    <table id="purchasesTable">
+        <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Item Type</th>
+            <th>Purchase Date</th>
+            <th>Spent Currency Amount</th>
+            <th>Spent Currency Name</th>
+            <th>Transaction ID</th>
+            <th>Transaction Source</th>
+            <th>Transaction Type</th>
+        </tr>
+        </thead>
+        <tbody id="purchasesBody">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.getElementById('uploadButton').addEventListener('click', function() {
+        var fileInput = document.getElementById('fileInput');
+        var files = fileInput.files;
+
+        if (files.length > 0) {
+            // Clear tables before appending new data
+            clearTable('reportsBody');
+            clearTable('purchasesBody');
+            clearTable('paymentsBody');
+
+            // Process each file
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var reader = new FileReader();
+                reader.fileName = file.name; // Store filename in reader object
+                reader.readAsText(file, 'UTF-8');
+
+                reader.onload = function(evt) {
+                    var jsonData = JSON.parse(evt.target.result);
+                    var fileName = evt.target.fileName;
+
+                    console.log('Uploaded file:', fileName); // Log the uploaded filename
+
+                    // Determine file type and call respective display function
+                    if (fileName.startsWith('valorant_grouped_reports')) {
+                        appendReports(jsonData);
+                    } else if (fileName.startsWith('valorant_purchase_event')) {
+                        appendPurchases(jsonData);
+                    } else if (fileName.startsWith('valorant_payment_event')) {
+                        appendPayments(jsonData);
+                        updateTotalRealCurrency();
+                    } else {
+                        console.warn('Unrecognized file:', fileName);
+                    }
+                };
+
+                reader.onerror = function(evt) {
+                    console.error('Error reading file:', evt.target.fileName);
+                };
+            }
+        } else {
+            console.error('No files selected');
+        }
+    });
+
+    function appendReports(data) {
+        var tableBody = document.getElementById('reportsBody');
+        var reportTypes = Object.keys(data.reports_made);
+
+        reportTypes.forEach(function(type) {
+            var row = document.createElement('tr');
+            var cellType = document.createElement('td');
+            var cellMade = document.createElement('td');
+            var cellReceived = document.createElement('td');
+
+            cellType.textContent = type;
+            cellMade.textContent = data.reports_made[type];
+            cellReceived.textContent = data.reports_received[type];
+
+            row.appendChild(cellType);
+            row.appendChild(cellMade);
+            row.appendChild(cellReceived);
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function appendPurchases(data) {
+        var tableBody = document.getElementById('purchasesBody');
+
+        data.forEach(function(item) {
+            var row = document.createElement('tr');
+            var columns = ['item_name', 'item_type', 'purchase_date', 'spent_currency_amount', 'spent_currency_name', 'transaction_id', 'transaction_source', 'transaction_type'];
+
+            columns.forEach(function(column) {
+                var cell = document.createElement('td');
+                cell.textContent = item[column] || '';
+                row.appendChild(cell);
+            });
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function appendPayments(data) {
+        var tableBody = document.getElementById('paymentsBody');
+
+        data.forEach(function(payment) {
+            var row = document.createElement('tr');
+            var columns = ['country_code', 'currency_code', 'game_currency_granted', 'game_currency_type', 'payment_method', 'payment_time_utc', 'player_facing_purchase_id', 'real_currency_paid_x100'];
+
+            columns.forEach(function(column) {
+                var cell = document.createElement('td');
+                cell.textContent = payment[column] || '';
+                row.appendChild(cell);
+            });
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function updateTotalRealCurrency() {
+        var paymentsTable = document.getElementById('paymentsTable');
+        var paymentsBody = paymentsTable.getElementsByTagName('tbody')[0];
+        var paymentsRows = paymentsBody.getElementsByTagName('tr');
+        var totalRealCurrency = 0;
+
+        for (var i = 0; i < paymentsRows.length; i++) {
+            var rowData = paymentsRows[i].getElementsByTagName('td');
+            var realCurrencyPaid = parseFloat(rowData[7].textContent); // Index 7 for Real Currency Paid
+
+            if (!isNaN(realCurrencyPaid)) {
+                totalRealCurrency += realCurrencyPaid;
+            }
+        }
+
+        var totalElement = document.getElementById('totalRealCurrency');
+        totalElement.textContent = (totalRealCurrency / 100).toFixed(2); // Display total divided by 100
+    }
+
+    function clearTable(tableId) {
+        var tableBody = document.getElementById(tableId);
+        tableBody.innerHTML = ''; // Clear all rows
+    }
+</script>
+</body>
+</html>
